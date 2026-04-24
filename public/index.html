@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeartMuLa</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f0f12; color: #e0e0e8; min-height: 100vh; padding: 2rem; }
+  h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 1.5rem; color: #c084fc; }
+  h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #a78bfa; margin-bottom: 0.75rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+  .group { background: #18181f; border: 1px solid #2a2a35; border-radius: 8px; padding: 1rem; }
+  label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+  label:first-of-type { margin-top: 0; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; background: #0f0f12; border: 1px solid #2a2a35; border-radius: 5px;
+    color: #e0e0e8; padding: 0.4rem 0.6rem; font-size: 0.85rem; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #7c3aed; }
+  textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+  .checkbox-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { margin: 0; color: #e0e0e8; }
+  button#submit {
+    margin-top: 1.25rem; padding: 0.6rem 2rem; background: #7c3aed; color: #fff;
+    border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  button#submit:hover { background: #6d28d9; }
+  button#submit:disabled { background: #3b2065; color: #888; cursor: not-allowed; }
+  #log-section { margin-top: 1.5rem; }
+  #log {
+    background: #0a0a0d; border: 1px solid #2a2a35; border-radius: 6px;
+    padding: 0.75rem 1rem; height: 300px; overflow-y: auto;
+    font-family: 'Fira Mono', 'Cascadia Code', monospace; font-size: 0.78rem;
+    line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+    color: #94a3b8;
+  }
+  #log.error { border-color: #7f1d1d; color: #fca5a5; }
+  #log.success { border-color: #14532d; }
+  .status { font-size: 0.82rem; margin-top: 0.5rem; color: #64748b; }
+  #audio-section { margin-top: 1.25rem; display: none; }
+  #audio-section p { margin-bottom: 0.5rem; font-size: 0.85rem; color: #86efac; }
+  audio { width: 100%; margin-top: 0.25rem; }
+  .full-width { grid-column: 1 / -1; }
+  #library-section { margin-top: 2rem; }
+  #library-section h2 { font-size: 1rem; color: #c084fc; margin-bottom: 0.75rem; }
+  #library-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+  #library-list li {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: #18181f; border: 1px solid #2a2a35; border-radius: 6px;
+    padding: 0.5rem 0.75rem; font-size: 0.85rem;
+  }
+  #library-list li.active { border-color: #7c3aed; }
+  #library-list .lib-name { flex: 1; color: #e0e0e8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #library-list button {
+    flex-shrink: 0; background: #7c3aed; border: none; border-radius: 4px;
+    color: #fff; padding: 0.25rem 0.7rem; font-size: 0.8rem; cursor: pointer;
+  }
+  #library-list button:hover { background: #6d28d9; }
+  #library-list button.playing { background: #059669; }
+  #library-empty { color: #475569; font-size: 0.85rem; }
+  /* Tabs */
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .tab-btn {
+    padding: 0.45rem 1.4rem; border: 1px solid #2a2a35; border-radius: 6px;
+    background: #18181f; color: #94a3b8; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  .tab-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+  .tab-btn:hover:not(.active) { background: #23232e; color: #e0e0e8; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  /* Train-specific */
+  #train-log {
+    background: #0a0a0d; border: 1px solid #2a2a35; border-radius: 6px;
+    padding: 0.75rem 1rem; height: 300px; overflow-y: auto;
+    font-family: 'Fira Mono', 'Cascadia Code', monospace; font-size: 0.78rem;
+    line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+    color: #94a3b8;
+  }
+  #train-log.error { border-color: #7f1d1d; color: #fca5a5; }
+  #train-log.success { border-color: #14532d; }
+  button#train-submit {
+    margin-top: 1.25rem; padding: 0.6rem 2rem; background: #7c3aed; color: #fff;
+    border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  button#train-submit:hover { background: #6d28d9; }
+  button#train-submit:disabled { background: #3b2065; color: #888; cursor: not-allowed; }
+  .train-note { font-size: 0.78rem; color: #64748b; margin-top: 0.75rem; }
+  /* Dataset tab */
+  .ds-file {
+    background: #18181f; border: 1px solid #2a2a35; border-radius: 8px;
+    padding: 1rem; margin-bottom: 0.75rem;
+  }
+  .ds-file.ds-saved { border-color: #14532d; }
+  .ds-file-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .ds-file-name { font-size: 0.9rem; font-weight: 600; color: #e0e0e8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ds-file audio { width: 100%; margin-bottom: 0.75rem; }
+  .ds-file label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.2rem; margin-top: 0.6rem; }
+  .ds-file label:first-of-type { margin-top: 0; }
+  .ds-file input[type=text], .ds-file textarea {
+    width: 100%; background: #0f0f12; border: 1px solid #2a2a35; border-radius: 5px;
+    color: #e0e0e8; padding: 0.4rem 0.6rem; font-size: 0.82rem; outline: none; font-family: inherit;
+  }
+  .ds-file input:focus, .ds-file textarea:focus { border-color: #7c3aed; }
+  .ds-file textarea { resize: vertical; min-height: 80px; }
+  .ds-file-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .ds-save-btn {
+    padding: 0.35rem 1.1rem; background: #7c3aed; color: #fff;
+    border: none; border-radius: 5px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .ds-save-btn:hover { background: #6d28d9; }
+  .ds-save-btn.saved { background: #059669; }
+  #ds-manifest-btn {
+    padding: 0.5rem 1.5rem; background: #0e7490; color: #fff;
+    border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    margin-bottom: 1.25rem;
+  }
+  #ds-manifest-btn:hover { background: #0891b2; }
+  #ds-manifest-status { font-size: 0.82rem; color: #64748b; margin-bottom: 1rem; }
+  #ds-empty { color: #475569; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>HeartMuLa</h1>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="generate">Generate</button>
+  <button class="tab-btn" data-tab="train">Train (LoRA)</button>
+  <button class="tab-btn" data-tab="dataset">Dataset</button>
+  <button class="tab-btn" data-tab="download">Download</button>
+</div>
+
+<div id="tab-generate" class="tab-panel active">
+<form id="form">
+  <div class="grid">
+
+    <div class="group">
+      <h2>Model</h2>
+      <label for="model_path">Model Path</label>
+      <input type="text" id="model_path" value="./ckpt">
+      <label for="version">Version</label>
+      <select id="version">
+        <option value="3B" selected>3B</option>
+        <option value="3B-happy-new-year">3B (Happy New Year)</option>
+        <option value="7B">7B</option>
+      </select>
+      <label for="save_path">Save Path</label>
+      <input type="text" id="save_path" value="./assets/output.mp3">
+      <label for="lora_path">LoRA Adapter Path <span style="color:#64748b;font-weight:400">(optional)</span></label>
+      <input type="text" id="lora_path" value="./lora.pt">
+      <label for="lora_rank">LoRA Rank</label>
+      <input type="number" id="lora_rank" value="8" min="1">
+      <label for="lora_alpha">LoRA Alpha</label>
+      <input type="number" id="lora_alpha" value="16" min="1">
+    </div>
+
+    <div class="group">
+      <h2>Sampling</h2>
+      <label for="max_audio_length_ms">Max Audio Length (ms)</label>
+      <input type="number" id="max_audio_length_ms" value="240000" step="1000">
+      <label for="temperature">Temperature</label>
+      <input type="number" id="temperature" value="1.0" step="0.01" min="0.01">
+      <label for="topk">Top-K</label>
+      <input type="number" id="topk" value="50" step="1" min="1">
+      <label for="cfg_scale">CFG Scale (1.0 = disabled)</label>
+      <input type="number" id="cfg_scale" value="1.5" step="0.01" min="0">
+    </div>
+
+    <div class="group">
+      <h2>Devices &amp; Dtypes</h2>
+      <label for="mula_device">MuLa Device</label>
+      <input type="text" id="mula_device" value="cuda">
+      <label for="codec_device">Codec Device</label>
+      <input type="text" id="codec_device" value="cuda">
+      <label for="mula_dtype">MuLa Dtype</label>
+      <select id="mula_dtype">
+        <option value="bf16" selected>bf16</option>
+        <option value="fp32">fp32</option>
+        <option value="fp16">fp16</option>
+      </select>
+      <label for="codec_dtype">Codec Dtype</label>
+      <select id="codec_dtype">
+        <option value="fp32" selected>fp32</option>
+        <option value="bf16">bf16</option>
+        <option value="fp16">fp16</option>
+      </select>
+      <div class="checkbox-row">
+        <input type="checkbox" id="lazy_load" checked>
+        <label for="lazy_load">Lazy Load</label>
+      </div>
+    </div>
+
+    <div class="group full-width">
+      <h2>Content</h2>
+      <label for="tags">Tags</label>
+      <textarea id="tags" placeholder="e.g. pop, upbeat, electric guitar, female vocals"></textarea>
+      <label for="lyrics">Lyrics</label>
+      <textarea id="lyrics" placeholder="Enter song lyrics here..." style="min-height:120px"></textarea>
+    </div>
+
+  </div>
+
+  <button type="submit" id="submit">Generate</button>
+</form>
+
+<div id="log-section">
+  <div id="log"></div>
+  <div class="status" id="status"></div>
+</div>
+
+<div id="audio-section">
+  <p>Generation complete — audio ready:</p>
+  <audio id="player" controls></audio>
+</div>
+
+<div id="library-section">
+  <h2>Generated Files</h2>
+  <ul id="library-list"><li id="library-empty">No files yet.</li></ul>
+</div>
+</div><!-- end tab-generate -->
+
+<div id="tab-train" class="tab-panel">
+
+<!-- Step 1: Encode -->
+<h2 style="margin-bottom:0.75rem">Step 1 — Encode dataset → tokens</h2>
+<form id="encode-form">
+  <div class="grid">
+    <div class="group">
+      <h2>Encode</h2>
+      <label for="encode-manifest">Manifest (dataset.json)</label>
+      <input type="text" id="encode-manifest" value="./data/dataset.json">
+      <label for="encode-output-dir">Tokens Output Dir</label>
+      <input type="text" id="encode-output-dir" value="./data/tokens">
+      <label for="encode-model-path">Model Path</label>
+      <input type="text" id="encode-model-path" value="./ckpt">
+    </div>
+  </div>
+  <button type="submit" id="encode-submit" style="margin-top:1rem;padding:0.6rem 2rem;background:#0e7490;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:600;cursor:pointer">Encode Dataset</button>
+</form>
+<div style="margin-top:1rem">
+  <div id="encode-log" style="background:#0a0a0d;border:1px solid #2a2a35;border-radius:6px;padding:0.75rem 1rem;height:180px;overflow-y:auto;font-family:monospace;font-size:0.78rem;line-height:1.5;white-space:pre-wrap;color:#94a3b8"></div>
+  <div class="status" id="encode-status"></div>
+</div>
+
+<hr style="border:none;border-top:1px solid #2a2a35;margin:1.5rem 0">
+
+<!-- Step 2: Train -->
+<h2 style="margin-bottom:0.75rem">Step 2 — Train LoRA</h2>
+<form id="train-form">
+  <div class="grid">
+
+    <div class="group">
+      <h2>Paths</h2>
+      <label for="train-model-path">Model Path</label>
+      <input type="text" id="train-model-path" value="./ckpt">
+      <label for="train-version">Version</label>
+      <select id="train-version">
+        <option value="3B">3B</option>
+        <option value="3B-happy-new-year" selected>3B (Happy New Year)</option>
+        <option value="7B">7B</option>
+      </select>
+      <label for="train-dataset-dir">Dataset Dir (tokens)</label>
+      <input type="text" id="train-dataset-dir" value="./data/tokens">
+      <label for="train-output">Output LoRA Path</label>
+      <input type="text" id="train-output" value="./lora.pt">
+    </div>
+
+    <div class="group">
+      <h2>Hyperparameters</h2>
+      <label for="train-epochs">Epochs</label>
+      <input type="number" id="train-epochs" value="3" min="1">
+      <label for="train-lora-rank">LoRA Rank</label>
+      <input type="number" id="train-lora-rank" value="8" min="1">
+      <label for="train-lora-alpha">LoRA Alpha</label>
+      <input type="number" id="train-lora-alpha" value="16" min="1">
+      <label for="train-lr">Learning Rate</label>
+      <input type="number" id="train-lr" value="0.0001" step="0.00001">
+      <label for="train-grad-accum">Grad Accum Steps</label>
+      <input type="number" id="train-grad-accum" value="4" min="1">
+      <label for="train-ckpt-every">Checkpoint Every N Epochs (0 = off)</label>
+      <input type="number" id="train-ckpt-every" value="100" min="0">
+    </div>
+
+  </div>
+  <p class="train-note">Prepare tokens first: <code>venv/bin/python examples/encode_dataset.py --manifest dataset.json --output_dir ./data/tokens</code></p>
+  <button type="submit" id="train-submit">Start Training</button>
+</form>
+
+<div id="train-log-section" style="margin-top:1.5rem">
+  <div id="train-log"></div>
+  <div class="status" id="train-status"></div>
+</div>
+</div><!-- end tab-train -->
+
+<div id="tab-dataset" class="tab-panel">
+
+<div class="group" style="margin-bottom:1rem">
+  <h2>Auto-Prepare (Audio Flamingo + HeartTranscriptor)</h2>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.5rem">
+    <div class="checkbox-row"><input type="checkbox" id="prep-skip-existing" checked><label for="prep-skip-existing">Skip already tagged &amp; lyriced</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="prep-skip-tags"><label for="prep-skip-tags">Skip tags</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="prep-skip-lyrics"><label for="prep-skip-lyrics">Skip lyrics</label></div>
+  </div>
+  <button id="prep-btn" style="margin-top:0.75rem;padding:0.5rem 1.5rem;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:600;cursor:pointer">Run Prepare</button>
+  <div id="prep-log" style="margin-top:0.75rem;background:#0a0a0d;border:1px solid #2a2a35;border-radius:6px;padding:0.75rem 1rem;height:180px;overflow-y:auto;font-family:monospace;font-size:0.78rem;line-height:1.5;white-space:pre-wrap;color:#94a3b8;display:none"></div>
+  <div class="status" id="prep-status"></div>
+</div>
+
+<div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:0.5rem">
+  <button id="ds-manifest-btn">Build dataset.json</button>
+  <div style="display:flex;gap:0.5rem;align-items:center;flex:1;min-width:220px">
+    <input type="text" id="prepend-tags-input" placeholder="gospel, gospel choir" style="flex:1;background:#0f0f12;border:1px solid #2a2a35;border-radius:5px;color:#e0e0e8;padding:0.4rem 0.6rem;font-size:0.85rem;outline:none">
+    <button id="prepend-tags-btn" style="flex-shrink:0;padding:0.45rem 1.1rem;background:#7c3aed;color:#fff;border:none;border-radius:5px;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap">Prepend Tags</button>
+  </div>
+</div>
+<div id="ds-manifest-status"></div>
+<div id="ds-player-bar" style="display:none;margin-bottom:1rem;background:#18181f;border:1px solid #2a2a35;border-radius:8px;padding:0.75rem 1rem;">
+  <div id="ds-player-label" style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.4rem"></div>
+  <audio id="ds-player" controls style="width:100%"></audio>
+</div>
+<div id="ds-list"><p id="ds-empty">Loading...</p></div>
+</div><!-- end tab-dataset -->
+
+<div id="tab-download" class="tab-panel">
+<h2 style="margin-bottom:0.75rem">Download Audio from YouTube</h2>
+<form id="download-form">
+  <div class="grid">
+    <div class="group full-width">
+      <h2>URLs</h2>
+      <label for="dl-urls">YouTube URLs <span style="color:#64748b;font-weight:400">(whitespace-separated)</span></label>
+      <textarea id="dl-urls" style="min-height:140px;font-family:monospace;font-size:0.8rem" placeholder="https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=..."></textarea>
+      <label for="dl-output-dir">Output Directory</label>
+      <input type="text" id="dl-output-dir" value="./data/raw">
+    </div>
+  </div>
+  <button type="submit" id="dl-submit" style="margin-top:1rem;padding:0.6rem 2rem;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:600;cursor:pointer">Download</button>
+</form>
+<div style="margin-top:1rem">
+  <div id="dl-log" style="background:#0a0a0d;border:1px solid #2a2a35;border-radius:6px;padding:0.75rem 1rem;height:300px;overflow-y:auto;font-family:monospace;font-size:0.78rem;line-height:1.5;white-space:pre-wrap;color:#94a3b8"></div>
+  <div class="status" id="dl-status"></div>
+</div>
+</div><!-- end tab-download -->
+
+<script>
+const form = document.getElementById('form');
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+const audioSection = document.getElementById('audio-section');
+const player = document.getElementById('player');
+const submitBtn = document.getElementById('submit');
+
+let evtSource = null;
+
+function appendLog(line) {
+  logEl.textContent += line + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (evtSource) { evtSource.close(); evtSource = null; }
+
+  logEl.textContent = '';
+  logEl.className = '';
+  audioSection.style.display = 'none';
+  statusEl.textContent = 'Starting...';
+  submitBtn.disabled = true;
+
+  const payload = {
+    model_path: document.getElementById('model_path').value,
+    version: document.getElementById('version').value,
+    lyrics: document.getElementById('lyrics').value,
+    tags: document.getElementById('tags').value,
+    save_path: document.getElementById('save_path').value,
+    max_audio_length_ms: parseInt(document.getElementById('max_audio_length_ms').value),
+    temperature: parseFloat(document.getElementById('temperature').value),
+    topk: parseInt(document.getElementById('topk').value),
+    cfg_scale: parseFloat(document.getElementById('cfg_scale').value),
+    mula_device: document.getElementById('mula_device').value,
+    codec_device: document.getElementById('codec_device').value,
+    mula_dtype: document.getElementById('mula_dtype').value,
+    codec_dtype: document.getElementById('codec_dtype').value,
+    lazy_load: document.getElementById('lazy_load').checked,
+    lora_path: document.getElementById('lora_path').value.trim() || null,
+    lora_rank: parseInt(document.getElementById('lora_rank').value),
+    lora_alpha: parseFloat(document.getElementById('lora_alpha').value),
+  };
+
+  let jobId;
+  try {
+    const resp = await fetch('/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`Server error ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+    jobId = data.jobId;
+  } catch (err) {
+    appendLog('ERROR: ' + err.message);
+    logEl.className = 'error';
+    statusEl.textContent = 'Failed to start job.';
+    submitBtn.disabled = false;
+    return;
+  }
+
+  statusEl.textContent = `Job ${jobId} running...`;
+  evtSource = new EventSource(`/stream/${jobId}`);
+
+  evtSource.onmessage = (event) => {
+    const line = JSON.parse(event.data);
+    if (line.startsWith('__EXIT__:')) {
+      const code = parseInt(line.split(':')[1]);
+      evtSource.close();
+      evtSource = null;
+      submitBtn.disabled = false;
+      if (code === 0) {
+        logEl.className = 'success';
+        statusEl.textContent = 'Done!';
+        const audioPath = encodeURIComponent(payload.save_path);
+        player.src = `/audio?path=${audioPath}`;
+        audioSection.style.display = 'block';
+        refreshLibrary();
+      } else {
+        logEl.className = 'error';
+        statusEl.textContent = `Process exited with code ${code}`;
+      }
+    } else {
+      appendLog(line);
+    }
+  };
+
+  evtSource.onerror = () => {
+    evtSource.close();
+    evtSource = null;
+    submitBtn.disabled = false;
+    statusEl.textContent = 'Stream disconnected.';
+  };
+});
+// Library
+const libraryList = document.getElementById('library-list');
+const libraryEmpty = document.getElementById('library-empty');
+let currentPlayBtn = null;
+
+async function refreshLibrary() {
+  const files = await fetch('/library').then(r => r.json());
+  libraryList.innerHTML = '';
+  if (files.length === 0) {
+    libraryList.innerHTML = '<li id="library-empty">No files yet.</li>';
+    return;
+  }
+  files.forEach(f => {
+    const li = document.createElement('li');
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'lib-name';
+    nameSpan.title = f.name;
+    nameSpan.textContent = f.name;
+    const btn = document.createElement('button');
+    btn.textContent = '▶ Play';
+    btn.addEventListener('click', () => {
+      if (currentPlayBtn && currentPlayBtn !== btn) {
+        currentPlayBtn.textContent = '▶ Play';
+        currentPlayBtn.classList.remove('playing');
+        currentPlayBtn.closest('li').classList.remove('active');
+      }
+      const audioPath = encodeURIComponent(f.path);
+      player.src = `/audio?path=${audioPath}`;
+      player.play();
+      audioSection.style.display = 'block';
+      btn.textContent = '■ Stop';
+      btn.classList.add('playing');
+      li.classList.add('active');
+      currentPlayBtn = btn;
+      player.onended = () => {
+        btn.textContent = '▶ Play';
+        btn.classList.remove('playing');
+        li.classList.remove('active');
+        currentPlayBtn = null;
+      };
+    });
+    li.appendChild(nameSpan);
+    li.appendChild(btn);
+    libraryList.appendChild(li);
+  });
+}
+
+// Load library on page load
+refreshLibrary();
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'dataset') loadDataset();
+  });
+});
+
+// Encode form
+const encodeForm = document.getElementById('encode-form');
+const encodeLogEl = document.getElementById('encode-log');
+const encodeStatusEl = document.getElementById('encode-status');
+const encodeSubmitBtn = document.getElementById('encode-submit');
+let encodeEvtSource = null;
+
+encodeForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (encodeEvtSource) { encodeEvtSource.close(); encodeEvtSource = null; }
+  encodeLogEl.textContent = '';
+  encodeStatusEl.textContent = 'Encoding...';
+  encodeSubmitBtn.disabled = true;
+
+  const payload = {
+    manifest: document.getElementById('encode-manifest').value,
+    output_dir: document.getElementById('encode-output-dir').value,
+    model_path: document.getElementById('encode-model-path').value,
+  };
+
+  let jobId;
+  try {
+    const resp = await fetch('/encode', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+    jobId = (await resp.json()).jobId;
+  } catch (err) {
+    encodeLogEl.textContent = 'ERROR: ' + err.message;
+    encodeStatusEl.textContent = 'Failed.';
+    encodeSubmitBtn.disabled = false;
+    return;
+  }
+
+  encodeEvtSource = new EventSource(`/encode-stream/${jobId}`);
+  encodeEvtSource.onmessage = (event) => {
+    const line = JSON.parse(event.data);
+    if (line.startsWith('__EXIT__:')) {
+      const code = parseInt(line.split(':')[1]);
+      encodeEvtSource.close(); encodeEvtSource = null;
+      encodeSubmitBtn.disabled = false;
+      encodeStatusEl.textContent = code === 0 ? 'Encoding complete.' : `Exited with code ${code}`;
+    } else {
+      encodeLogEl.textContent += line + '\n';
+      encodeLogEl.scrollTop = encodeLogEl.scrollHeight;
+    }
+  };
+  encodeEvtSource.onerror = () => {
+    encodeEvtSource.close(); encodeEvtSource = null;
+    encodeSubmitBtn.disabled = false;
+    encodeStatusEl.textContent = 'Stream disconnected.';
+  };
+});
+
+// Training form
+const trainForm = document.getElementById('train-form');
+const trainLogEl = document.getElementById('train-log');
+const trainStatusEl = document.getElementById('train-status');
+const trainSubmitBtn = document.getElementById('train-submit');
+let trainEvtSource = null;
+
+function appendTrainLog(line) {
+  trainLogEl.textContent += line + '\n';
+  trainLogEl.scrollTop = trainLogEl.scrollHeight;
+}
+
+trainForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (trainEvtSource) { trainEvtSource.close(); trainEvtSource = null; }
+
+  trainLogEl.textContent = '';
+  trainLogEl.className = '';
+  trainStatusEl.textContent = 'Starting training...';
+  trainSubmitBtn.disabled = true;
+
+  const payload = {
+    model_path: document.getElementById('train-model-path').value,
+    version: document.getElementById('train-version').value,
+    dataset_dir: document.getElementById('train-dataset-dir').value,
+    output: document.getElementById('train-output').value,
+    epochs: parseInt(document.getElementById('train-epochs').value),
+    lora_rank: parseInt(document.getElementById('train-lora-rank').value),
+    lora_alpha: parseFloat(document.getElementById('train-lora-alpha').value),
+    lr: parseFloat(document.getElementById('train-lr').value),
+    grad_accum: parseInt(document.getElementById('train-grad-accum').value),
+    ckpt_every: parseInt(document.getElementById('train-ckpt-every').value),
+  };
+
+  let jobId;
+  try {
+    const resp = await fetch('/train', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`Server error ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+    jobId = data.jobId;
+  } catch (err) {
+    appendTrainLog('ERROR: ' + err.message);
+    trainLogEl.className = 'error';
+    trainStatusEl.textContent = 'Failed to start training.';
+    trainSubmitBtn.disabled = false;
+    return;
+  }
+
+  trainStatusEl.textContent = `Training job ${jobId} running...`;
+  trainEvtSource = new EventSource(`/train-stream/${jobId}`);
+
+  trainEvtSource.onmessage = (event) => {
+    const line = JSON.parse(event.data);
+    if (line.startsWith('__EXIT__:')) {
+      const code = parseInt(line.split(':')[1]);
+      trainEvtSource.close();
+      trainEvtSource = null;
+      trainSubmitBtn.disabled = false;
+      if (code === 0) {
+        trainLogEl.className = 'success';
+        trainStatusEl.textContent = `LoRA saved to ${payload.output}`;
+      } else {
+        trainLogEl.className = 'error';
+        trainStatusEl.textContent = `Training exited with code ${code}`;
+      }
+    } else {
+      appendTrainLog(line);
+    }
+  };
+
+  trainEvtSource.onerror = () => {
+    trainEvtSource.close();
+    trainEvtSource = null;
+    trainSubmitBtn.disabled = false;
+    trainStatusEl.textContent = 'Stream disconnected.';
+  };
+});
+
+// Prepare pipeline
+let prepEvtSource = null;
+document.getElementById('prep-btn').addEventListener('click', async () => {
+  if (prepEvtSource) { prepEvtSource.close(); prepEvtSource = null; }
+  const logEl = document.getElementById('prep-log');
+  const statusEl = document.getElementById('prep-status');
+  const btn = document.getElementById('prep-btn');
+  logEl.textContent = '';
+  logEl.style.display = 'block';
+  statusEl.textContent = 'Starting...';
+  btn.disabled = true;
+
+  const payload = {
+    skip_existing: document.getElementById('prep-skip-existing').checked,
+    skip_tags: document.getElementById('prep-skip-tags').checked,
+    skip_lyrics: document.getElementById('prep-skip-lyrics').checked,
+  };
+
+  let jobId;
+  try {
+    const resp = await fetch('/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+    jobId = (await resp.json()).jobId;
+  } catch (err) {
+    logEl.textContent = 'ERROR: ' + err.message;
+    statusEl.textContent = 'Failed.';
+    btn.disabled = false;
+    return;
+  }
+
+  prepEvtSource = new EventSource(`/prepare-stream/${jobId}`);
+  prepEvtSource.onmessage = (event) => {
+    const line = JSON.parse(event.data);
+    if (line.startsWith('__EXIT__:')) {
+      const code = parseInt(line.split(':')[1]);
+      prepEvtSource.close(); prepEvtSource = null;
+      btn.disabled = false;
+      statusEl.textContent = code === 0 ? 'Done! Reload the editor to see updated metadata.' : `Exited with code ${code}`;
+      if (code === 0) loadDataset();
+    } else {
+      logEl.textContent += line + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  };
+  prepEvtSource.onerror = () => {
+    prepEvtSource.close(); prepEvtSource = null;
+    btn.disabled = false;
+    statusEl.textContent = 'Stream disconnected.';
+  };
+});
+
+// Dataset tab
+const dsPlayer = document.getElementById('ds-player');
+const dsPlayerBar = document.getElementById('ds-player-bar');
+const dsPlayerLabel = document.getElementById('ds-player-label');
+let dsActiveBtn = null;
+
+function dsPlay(btn, filePath, fileName) {
+  if (dsActiveBtn && dsActiveBtn !== btn) {
+    dsActiveBtn.textContent = '▶';
+    dsActiveBtn.classList.remove('playing');
+  }
+  if (dsActiveBtn === btn && !dsPlayer.paused) {
+    dsPlayer.pause();
+    btn.textContent = '▶';
+    btn.classList.remove('playing');
+    dsActiveBtn = null;
+    return;
+  }
+  dsPlayer.src = `/audio?path=${encodeURIComponent(filePath)}`;
+  dsPlayerLabel.textContent = fileName;
+  dsPlayerBar.style.display = 'block';
+  dsPlayer.play();
+  btn.textContent = '■';
+  btn.classList.add('playing');
+  dsActiveBtn = btn;
+}
+
+dsPlayer.addEventListener('ended', () => {
+  if (dsActiveBtn) { dsActiveBtn.textContent = '▶'; dsActiveBtn.classList.remove('playing'); dsActiveBtn = null; }
+});
+
+async function loadDataset() {
+  const files = await fetch('/dataset-files').then(r => r.json());
+  const list = document.getElementById('ds-list');
+  if (files.length === 0) {
+    list.innerHTML = '<p id="ds-empty">No audio files found in ./data/raw</p>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const f of files) {
+    const meta = await fetch(`/dataset-meta?file=${encodeURIComponent(f.name)}`).then(r => r.json());
+    const div = document.createElement('div');
+    div.className = 'ds-file' + (meta.tags || meta.lyrics ? ' ds-saved' : '');
+    div.dataset.file = f.name;
+
+    const header = document.createElement('div');
+    header.className = 'ds-file-header';
+
+    const playBtn = document.createElement('button');
+    playBtn.textContent = '▶';
+    playBtn.style.cssText = 'flex-shrink:0;background:#7c3aed;border:none;border-radius:4px;color:#fff;width:2rem;height:2rem;font-size:0.9rem;cursor:pointer';
+    playBtn.addEventListener('click', () => dsPlay(playBtn, f.path, f.name));
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'ds-file-name';
+    nameSpan.title = f.name;
+    nameSpan.textContent = f.name;
+
+    header.appendChild(playBtn);
+    header.appendChild(nameSpan);
+
+    const tagsLabel = document.createElement('label');
+    tagsLabel.textContent = 'Tags';
+    const tagsInput = document.createElement('input');
+    tagsInput.type = 'text';
+    tagsInput.className = 'ds-tags';
+    tagsInput.placeholder = 'e.g. pop, upbeat, female vocals';
+    tagsInput.value = meta.tags || '';
+
+    const lyricsLabel = document.createElement('label');
+    lyricsLabel.textContent = 'Lyrics';
+    const lyricsArea = document.createElement('textarea');
+    lyricsArea.className = 'ds-lyrics';
+    lyricsArea.rows = 5;
+    lyricsArea.value = meta.lyrics || '';
+
+    const actions = document.createElement('div');
+    actions.className = 'ds-file-actions';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'ds-save-btn';
+    saveBtn.textContent = 'Save';
+    const saveStatus = document.createElement('span');
+    saveStatus.style.cssText = 'font-size:0.78rem;color:#64748b;align-self:center';
+
+    saveBtn.addEventListener('click', async () => {
+      await fetch('/dataset-meta', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: f.name, tags: tagsInput.value, lyrics: lyricsArea.value }),
+      });
+      saveBtn.textContent = 'Saved!';
+      saveBtn.classList.add('saved');
+      div.classList.add('ds-saved');
+      saveStatus.textContent = 'Saved';
+      setTimeout(() => { saveBtn.textContent = 'Save'; saveBtn.classList.remove('saved'); }, 1500);
+    });
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(saveStatus);
+    div.appendChild(header);
+    div.appendChild(tagsLabel);
+    div.appendChild(tagsInput);
+    div.appendChild(lyricsLabel);
+    div.appendChild(lyricsArea);
+    div.appendChild(actions);
+    list.appendChild(div);
+  }
+}
+
+document.getElementById('ds-manifest-btn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('ds-manifest-status');
+  statusEl.textContent = 'Building...';
+  const result = await fetch('/dataset-manifest', { method: 'POST' }).then(r => r.json());
+  statusEl.textContent = result.ok ? `Built ${result.path} — ${result.count} entries` : 'Error: ' + result.error;
+});
+
+document.getElementById('prepend-tags-btn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('ds-manifest-status');
+  const tags = document.getElementById('prepend-tags-input').value.trim();
+  if (!tags) { statusEl.textContent = 'Enter tags to prepend.'; return; }
+  statusEl.textContent = 'Prepending...';
+  const result = await fetch('/prepend-tags', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tags }),
+  }).then(r => r.json());
+  statusEl.textContent = result.ok
+    ? `Done — ${result.updated} of ${result.total} entries updated`
+    : 'Error: ' + result.error;
+});
+
+// Download form
+const dlForm = document.getElementById('download-form');
+const dlLogEl = document.getElementById('dl-log');
+const dlStatusEl = document.getElementById('dl-status');
+const dlSubmitBtn = document.getElementById('dl-submit');
+let dlEvtSource = null;
+
+dlForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (dlEvtSource) { dlEvtSource.close(); dlEvtSource = null; }
+  dlLogEl.textContent = '';
+  dlStatusEl.textContent = 'Starting download...';
+  dlSubmitBtn.disabled = true;
+
+  const payload = {
+    urls: document.getElementById('dl-urls').value,
+    output_dir: document.getElementById('dl-output-dir').value,
+  };
+
+  let jobId;
+  try {
+    const resp = await fetch('/download', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`Server error ${resp.status}: ${await resp.text()}`);
+    jobId = (await resp.json()).jobId;
+  } catch (err) {
+    dlLogEl.textContent = 'ERROR: ' + err.message;
+    dlStatusEl.textContent = 'Failed.';
+    dlSubmitBtn.disabled = false;
+    return;
+  }
+
+  dlEvtSource = new EventSource(`/download-stream/${jobId}`);
+  dlEvtSource.onmessage = (event) => {
+    const line = JSON.parse(event.data);
+    if (line.startsWith('__EXIT__:')) {
+      const code = parseInt(line.split(':')[1]);
+      dlEvtSource.close(); dlEvtSource = null;
+      dlSubmitBtn.disabled = false;
+      dlStatusEl.textContent = code === 0 ? 'Download complete.' : `yt-dlp exited with code ${code}`;
+    } else {
+      dlLogEl.textContent += line + '\n';
+      dlLogEl.scrollTop = dlLogEl.scrollHeight;
+    }
+  };
+  dlEvtSource.onerror = () => {
+    dlEvtSource.close(); dlEvtSource = null;
+    dlSubmitBtn.disabled = false;
+    dlStatusEl.textContent = 'Stream disconnected.';
+  };
+});
+</script>
+</body>
+</html>

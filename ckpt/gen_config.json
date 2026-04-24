@@ -1,0 +1,6 @@
+{
+    "text_bos_id": 128000,
+    "text_eos_id": 128001,
+    "audio_eos_id": 8193,
+    "empty_id": 0
+}

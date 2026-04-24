@@ -1,0 +1,35 @@
+venv/
+venvc/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Model weights (large files — download with download_models.py)
+ckpt/HeartMuLa-oss-3B/
+ckpt/HeartMuLa-oss-3B-happy-new-year/
+ckpt/HeartMuLa-oss-7B/
+ckpt/HeartCodec-oss/
+ckpt/HeartTranscriptor-oss/
+
+# Raw and processed audio data
+data/raw/
+data/processed/
+data/tokens/
+data/train_log.txt
+
+# Generated audio output
+assets/*.mp3
+assets/*.wav
+
+# Intermediate checkpoints
+lora_checkpoints/
+
+# Trained adapters (may contain copyrighted training data influence)
+lora.pt
+*.lora.pt
+
+# Misc
+*.egg-info/
+.env
