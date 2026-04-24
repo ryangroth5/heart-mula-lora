@@ -9,12 +9,11 @@ Pipeline:
   3. Tag generation via Audio Flamingo 3 (subprocess to audio-flamingo conda env)
 
 Usage:
-    /home/ubooty/local/heart-mula/venv/bin/python \
-        /home/ubooty/local/heart-mula/examples/prepare_lora_dataset.py \
+    venv/bin/python examples/prepare_lora_dataset.py \
         --input_dir ./data/raw \
         --output_dir ./data/processed \
-        --output_json ./dataset.json \
-        --model_path /home/ubooty/local/heart-mula/ckpt
+        --output_json ./data/dataset.json \
+        --model_path ./ckpt
 """
 
 import argparse
@@ -28,7 +27,7 @@ import torchaudio
 
 
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
-AF_TAG_HELPER = "/home/ubooty/local/audio-flamingo/audio_flamingo_tag.py"
+AF_TAG_HELPER = None  # set via --af_tag_helper or auto-discovered relative to --af_python
 HDEMUCS_SAMPLE_RATE = 44100
 
 
@@ -73,18 +72,22 @@ def transcribe_lyrics(vocals_path: Path, model_path: str, device: str, dtype: st
     return result["text"].strip()
 
 
-AF_ENV = "/home/ubooty/miniconda3/envs/audio-flamingo"
-AF_LD_LIBRARY_PATH = f"{AF_ENV}/lib/python3.11/site-packages/nvidia/cusparselt/lib"
-
-
-def generate_tags(wav_path: Path, af_python: str) -> str:
+def generate_tags(wav_path: Path, af_python: str, af_tag_helper: str) -> str:
     import os
+    from pathlib import Path as _Path
+    # Derive conda env prefix and cusparselt lib path from the python binary location
+    af_env = str(_Path(af_python).parent.parent)
+    python_version = subprocess.check_output(
+        [af_python, "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+        text=True
+    ).strip()
+    af_ld = f"{af_env}/lib/python{python_version}/site-packages/nvidia/cusparselt/lib"
     env = os.environ.copy()
-    env["CUDA_HOME"] = AF_ENV
-    env["LD_LIBRARY_PATH"] = AF_LD_LIBRARY_PATH + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
+    env["CUDA_HOME"] = af_env
+    env["LD_LIBRARY_PATH"] = af_ld + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
 
     proc = subprocess.run(
-        [af_python, AF_TAG_HELPER, str(wav_path)],
+        [af_python, af_tag_helper, str(wav_path)],
         capture_output=True,
         text=True,
         env=env,
@@ -107,11 +110,12 @@ def main():
     parser.add_argument("--output_dir", default="./data/processed", help="Where to save vocals wav files")
     parser.add_argument("--output_json", default="./dataset.json", help="Output manifest path")
     parser.add_argument("--model_path", default="./ckpt", help="HeartMuLa checkpoint dir")
-    parser.add_argument("--heartmula_path", default="/home/ubooty/local/heart-mula",
-                        help="heart-mula repo root (prepended to sys.path for heartlib)")
-    parser.add_argument("--af_python",
-                        default="/home/ubooty/miniconda3/envs/audio-flamingo/bin/python",
-                        help="Python interpreter for the audio-flamingo conda env")
+    parser.add_argument("--heartmula_path", default=None,
+                        help="heart-mula repo root (prepended to sys.path; defaults to the repo containing this script)")
+    parser.add_argument("--af_python", default=None,
+                        help="Python interpreter for the audio-flamingo conda env (required unless --skip_tags)")
+    parser.add_argument("--af_tag_helper", default=None,
+                        help="Path to audio_flamingo_tag.py (defaults to audio_flamingo_tag.py next to --af_python)")
     parser.add_argument("--skip_tags", action="store_true", help="Skip tag generation")
     parser.add_argument("--skip_lyrics", action="store_true", help="Skip lyrics transcription")
     parser.add_argument("--skip_existing", action="store_true",
@@ -121,10 +125,24 @@ def main():
                         help="dtype for HeartTranscriptor")
     args = parser.parse_args()
 
-    # Ensure heartlib is importable
-    heartmula_path = str(Path(args.heartmula_path).resolve())
+    # Ensure heartlib is importable — default to the repo containing this script
+    heartmula_path = str(Path(args.heartmula_path).resolve()) if args.heartmula_path \
+        else str(Path(__file__).resolve().parent.parent)
     if heartmula_path not in sys.path:
         sys.path.insert(0, heartmula_path)
+
+    # Resolve audio-flamingo helper path
+    if not args.skip_tags:
+        if not args.af_python:
+            print("ERROR: --af_python is required unless --skip_tags is set", file=sys.stderr)
+            sys.exit(1)
+        af_tag_helper = args.af_tag_helper or str(Path(args.af_python).parent.parent / "audio_flamingo_tag.py")
+        if not Path(af_tag_helper).exists():
+            print(f"ERROR: audio_flamingo_tag.py not found at {af_tag_helper}\n"
+                  f"Pass --af_tag_helper /path/to/audio_flamingo_tag.py", file=sys.stderr)
+            sys.exit(1)
+    else:
+        af_tag_helper = None
 
     input_dir = Path(args.input_dir)
     output_dir = Path(args.output_dir)
@@ -189,7 +207,7 @@ def main():
             if mix_wav:
                 print("  Generating tags...")
                 try:
-                    entry["tags"] = generate_tags(mix_wav, args.af_python)
+                    entry["tags"] = generate_tags(mix_wav, args.af_python, af_tag_helper)
                     print(f"  Tags: {entry['tags']}")
                 except Exception as e:
                     print(f"  WARNING: tags failed for {audio_file.name}: {e}", file=sys.stderr)
