@@ -9,7 +9,7 @@ Pipeline:
   3. Tag generation via Audio Flamingo 3 (subprocess to audio-flamingo conda env)
 
 Usage:
-    venv/bin/python examples/prepare_lora_dataset.py \
+    venv/bin/python scripts/prepare_lora_dataset.py \
         --input_dir ./data/raw \
         --output_dir ./data/processed \
         --output_json ./data/dataset.json \

@@ -181,7 +181,7 @@ Healthy check: after epoch 1, LoRA A matrices must have non-zero gradients. If l
 
 Two issues to be aware of:
 
-**Import path:** `from examples.train_lora import apply_lora` fails if `examples/` is not on the Python module path. Fixed in `run_music_generation.py` by loading the module directly via `importlib.util.spec_from_file_location` using `__file__` as the anchor.
+**Import path:** `from scripts.train_lora import apply_lora` fails if `scripts/` is not on the Python module path. Fixed in `run_music_generation.py` by loading the module directly via `importlib.util.spec_from_file_location` using `__file__` as the anchor.
 
 **Device placement:** After `model.load_state_dict(lora_state, strict=False)`, the newly-created LoRA A/B matrices (loaded from a `map_location="cpu"` state dict) stay on CPU even though the rest of the model is on CUDA. Must call `model.to(mula_device)` after the state dict load, or you get:
 ```

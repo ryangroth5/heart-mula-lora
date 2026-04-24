@@ -2,7 +2,7 @@
 train_lora.py — LoRA fine-tuning for HeartMuLa 3B on pre-tokenized audio + lyrics/tags pairs.
 
 Single GPU:
-  venv/bin/python examples/train_lora.py \
+  venv/bin/python scripts/train_lora.py \
     --model_path ./ckpt \
     --dataset_dir ./data/tokens \
     --output ./lora.pt \
@@ -10,7 +10,7 @@ Single GPU:
     --lora_rank 8
 
 Multi-GPU:
-  accelerate launch --num_processes=2 examples/train_lora.py \
+  accelerate launch --num_processes=2 scripts/train_lora.py \
     --model_path ./ckpt --dataset_dir ./data/tokens ...
 """
 

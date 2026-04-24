@@ -1,0 +1,17 @@
+[
+  {
+    "audio": "./data/raw/your_song.mp3",
+    "lyrics": "Your lyrics here / second line of the verse",
+    "tags": "genre, mood, tempo bpm, instrument, vocals"
+  },
+  {
+    "audio": "./data/raw/another_song.wav",
+    "lyrics": "",
+    "tags": "rock, upbeat, electric guitar, drums, male vocals"
+  },
+  {
+    "audio": "./data/raw/instrumental.flac",
+    "lyrics": "",
+    "tags": "jazz, saxophone, piano, 90 bpm, instrumental"
+  }
+]

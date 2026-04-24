@@ -29,14 +29,16 @@ LoRA adapters are applied to the backbone attention projections (`q/k/v/output_p
 
 ## Step 1 — Prepare the dataset manifest
 
-`examples/prepare_lora_dataset.py` builds `dataset.json` automatically:
+A template manifest is included at `data/dataset.example.json`. If you prefer to write it by hand, copy it to `data/dataset.json` and fill in your audio paths, lyrics, and tags. `data/dataset.json` is gitignored — it's local to your machine.
+
+`scripts/prepare_lora_dataset.py` builds `dataset.json` automatically:
 
 1. **Source separation** (torchaudio HDemucs) — isolates vocals from full mix
 2. **Lyrics transcription** (HeartTranscriptorPipeline) — transcribes isolated vocals
 3. **Tag generation** (Audio Flamingo 3 via subprocess) — generates genre/mood/tempo/instrument tags
 
 ```bash
-venv/bin/python examples/prepare_lora_dataset.py \
+venv/bin/python scripts/prepare_lora_dataset.py \
   --input_dir ./data/raw \
   --output_dir ./data/processed \
   --output_json ./data/dataset.json \
@@ -76,7 +78,7 @@ python /path/to/audio-flamingo/prepend_tags.py \
 ## Step 2 — Encode audio to tokens
 
 ```bash
-venv/bin/python examples/encode_dataset.py \
+venv/bin/python scripts/encode_dataset.py \
   --manifest ./data/dataset.json \
   --output_dir ./data/tokens \
   --model_path ./ckpt
@@ -111,7 +113,7 @@ for f in sorted(glob.glob('./data/tokens/*.pt'))[:3]:
 ### Single GPU
 
 ```bash
-venv/bin/python examples/train_lora.py \
+venv/bin/python scripts/train_lora.py \
   --model_path ./ckpt \
   --dataset_dir ./data/tokens \
   --output ./lora.pt \
@@ -159,7 +161,7 @@ Loss should trend down monotonically. Some noise is normal with batch size 1 and
 ### CLI
 
 ```bash
-venv/bin/python examples/run_music_generation.py \
+venv/bin/python scripts/run_music_generation.py \
   --model_path ./ckpt \
   --version 3B-happy-new-year \
   --lyrics "He is real, He is real / Everybody ought to know" \

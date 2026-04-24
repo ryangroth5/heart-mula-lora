@@ -18,6 +18,7 @@ data/raw/
 data/processed/
 data/tokens/
 data/train_log.txt
+data/dataset.json
 
 # Generated audio output
 assets/*.mp3
