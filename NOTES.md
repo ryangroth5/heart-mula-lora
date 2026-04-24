@@ -109,25 +109,25 @@ Without the `.to()` call you get a dtype error on the first forward pass through
 
 ## audio-flamingo environment
 
-audio-flamingo runs in a separate conda env (`/home/ubooty/miniconda3/envs/audio-flamingo`) and cannot be imported from the heart-mula venv. Always call it via subprocess.
+audio-flamingo runs in a separate conda env (`$CONDA_PREFIX` (the audio-flamingo env)) and cannot be imported from the heart-mula venv. Always call it via subprocess.
 
 Two env vars must be set for the subprocess or it fails:
 
 ```
 LD_LIBRARY_PATH  must include:
-  /home/ubooty/miniconda3/envs/audio-flamingo/lib/python3.11/site-packages/nvidia/cusparselt/lib
+  $CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cusparselt/lib
 
 CUDA_HOME  must be:
-  /home/ubooty/miniconda3/envs/audio-flamingo
+  $CONDA_PREFIX
 ```
 
 These are set by `conda activate audio-flamingo` but are **not** inherited by subprocess calls. `prepare_lora_dataset.py` sets them automatically for the subprocess. If calling `audio_flamingo_tag.py` directly:
 
 ```bash
-export LD_LIBRARY_PATH=/home/ubooty/miniconda3/envs/audio-flamingo/lib/python3.11/site-packages/nvidia/cusparselt/lib:$LD_LIBRARY_PATH
-export CUDA_HOME=/home/ubooty/miniconda3/envs/audio-flamingo
-/home/ubooty/miniconda3/envs/audio-flamingo/bin/python \
-  /home/ubooty/local/audio-flamingo/audio_flamingo_tag.py <audio_file>
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cusparselt/lib:$LD_LIBRARY_PATH
+export CUDA_HOME=$CONDA_PREFIX
+/path/to/conda/envs/audio-flamingo/bin/python \
+  /path/to/audio-flamingo/audio_flamingo_tag.py <audio_file>
 ```
 
 ### llava stdout pollution
@@ -147,12 +147,12 @@ If the audio file can't be decoded (or is badly separated), audio-flamingo produ
 ## Dataset pipeline file layout
 
 ```
-/home/ubooty/local/audio-flamingo/
+/path/to/audio-flamingo/
   prepare_lora_dataset.py   # orchestrator: demucs → transcription → tags → dataset.json
   audio_flamingo_tag.py     # helper: runs inside audio-flamingo conda env
   prepend_tags.py           # post-process: prepend missing tags to all manifest entries
 
-/home/ubooty/local/heart-mula/
+./
   data/raw/           # 01.m4a – 11.m4a  (gospel choir source clips)
   data/processed/     # *_vocals.wav from HDemucs separation
   data/dataset.json   # manifest: audio path, lyrics, tags per clip
@@ -181,7 +181,7 @@ Healthy check: after epoch 1, LoRA A matrices must have non-zero gradients. If l
 
 Two issues to be aware of:
 
-**Import path:** `from examples.train_lora import apply_lora` fails if `examples/` is not on the Python module path. Fixed in `run_music_generation.py` by loading the module directly via `importlib.util.spec_from_file_location` using `__file__` as the anchor.
+**Import path:** `from scripts.train_lora import apply_lora` fails if `scripts/` is not on the Python module path. Fixed in `run_music_generation.py` by loading the module directly via `importlib.util.spec_from_file_location` using `__file__` as the anchor.
 
 **Device placement:** After `model.load_state_dict(lora_state, strict=False)`, the newly-created LoRA A/B matrices (loaded from a `map_location="cpu"` state dict) stay on CPU even though the rest of the model is on CUDA. Must call `model.to(mula_device)` after the state dict load, or you get:
 ```

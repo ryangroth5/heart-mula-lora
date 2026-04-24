@@ -29,18 +29,21 @@ LoRA adapters are applied to the backbone attention projections (`q/k/v/output_p
 
 ## Step 1 — Prepare the dataset manifest
 
-`/home/ubooty/local/audio-flamingo/prepare_lora_dataset.py` builds `dataset.json` automatically:
+A template manifest is included at `data/dataset.example.json`. If you prefer to write it by hand, copy it to `data/dataset.json` and fill in your audio paths, lyrics, and tags. `data/dataset.json` is gitignored — it's local to your machine.
+
+`scripts/prepare_lora_dataset.py` builds `dataset.json` automatically:
 
 1. **Source separation** (torchaudio HDemucs) — isolates vocals from full mix
 2. **Lyrics transcription** (HeartTranscriptorPipeline) — transcribes isolated vocals
 3. **Tag generation** (Audio Flamingo 3 via subprocess) — generates genre/mood/tempo/instrument tags
 
 ```bash
-venv/bin/python /home/ubooty/local/audio-flamingo/prepare_lora_dataset.py \
+venv/bin/python scripts/prepare_lora_dataset.py \
   --input_dir ./data/raw \
   --output_dir ./data/processed \
   --output_json ./data/dataset.json \
-  --model_path ./ckpt
+  --model_path ./ckpt \
+  --af_python /path/to/conda/envs/audio-flamingo/bin/python
 ```
 
 **All flags:**
@@ -51,20 +54,21 @@ venv/bin/python /home/ubooty/local/audio-flamingo/prepare_lora_dataset.py \
 | `--output_dir` | `./data/processed` | Where vocals `.wav` files are saved |
 | `--output_json` | `./dataset.json` | Output manifest |
 | `--model_path` | `./ckpt` | HeartMuLa checkpoint dir (for HeartTranscriptor) |
-| `--af_python` | `/home/ubooty/miniconda3/envs/audio-flamingo/bin/python` | Python for audio-flamingo env |
+| `--af_python` | required (unless `--skip_tags`) | Python interpreter for the audio-flamingo conda env |
+| `--af_tag_helper` | auto-discovered next to `--af_python` | Path to `audio_flamingo_tag.py` |
 | `--skip_tags` | false | Skip Audio Flamingo, leave tags blank |
 | `--skip_lyrics` | false | Skip HeartTranscriptor, leave lyrics blank |
 | `--device` | `cuda` | torch device |
 | `--dtype` | `fp32` | dtype for HeartTranscriptor |
 
-**Note on audio-flamingo tags:** The tagger subprocess requires two env vars that are only set when you `conda activate audio-flamingo`. `prepare_lora_dataset.py` sets them automatically for the subprocess:
+**Note on audio-flamingo tags:** The tagger subprocess requires two env vars that are only set when you `conda activate audio-flamingo`. `prepare_lora_dataset.py` derives and injects them automatically from the `--af_python` path:
 - `LD_LIBRARY_PATH` — adds the conda env's `nvidia/cusparselt/lib` path
-- `CUDA_HOME` — set to `/home/ubooty/miniconda3/envs/audio-flamingo`
+- `CUDA_HOME` — set to the conda env prefix (parent of the `bin/` directory)
 
-**Prepend tags manually:** After generation, use `prepend_tags.py` to add tags that the auto-labeler missed:
+**Prepend tags manually:** After generation, use `prepend_tags.py` (from the [audio-flamingo repo](https://github.com/NVIDIA/audio-flamingo)) to add tags that the auto-labeler missed:
 
 ```bash
-python /home/ubooty/local/audio-flamingo/prepend_tags.py \
+python /path/to/audio-flamingo/prepend_tags.py \
   --manifest ./data/dataset.json \
   --tags "gospel, gospel choir"
 ```
@@ -74,7 +78,7 @@ python /home/ubooty/local/audio-flamingo/prepend_tags.py \
 ## Step 2 — Encode audio to tokens
 
 ```bash
-venv/bin/python examples/encode_dataset.py \
+venv/bin/python scripts/encode_dataset.py \
   --manifest ./data/dataset.json \
   --output_dir ./data/tokens \
   --model_path ./ckpt
@@ -109,7 +113,7 @@ for f in sorted(glob.glob('./data/tokens/*.pt'))[:3]:
 ### Single GPU
 
 ```bash
-venv/bin/python examples/train_lora.py \
+venv/bin/python scripts/train_lora.py \
   --model_path ./ckpt \
   --dataset_dir ./data/tokens \
   --output ./lora.pt \
@@ -157,7 +161,7 @@ Loss should trend down monotonically. Some noise is normal with batch size 1 and
 ### CLI
 
 ```bash
-venv/bin/python examples/run_music_generation.py \
+venv/bin/python scripts/run_music_generation.py \
   --model_path ./ckpt \
   --version 3B-happy-new-year \
   --lyrics "He is real, He is real / Everybody ought to know" \
@@ -194,12 +198,12 @@ Download it: `venv/bin/python -c "from huggingface_hub import snapshot_download;
 **`libcusparseLt.so.0: cannot open shared object file`** (in audio-flamingo tagger)
 The conda activation script normally sets `LD_LIBRARY_PATH`. When calling the tagger directly (not via prepare_lora_dataset.py), set it manually:
 ```bash
-export LD_LIBRARY_PATH=/home/ubooty/miniconda3/envs/audio-flamingo/lib/python3.11/site-packages/nvidia/cusparselt/lib:$LD_LIBRARY_PATH
-export CUDA_HOME=/home/ubooty/miniconda3/envs/audio-flamingo
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cusparselt/lib:$LD_LIBRARY_PATH
+export CUDA_HOME=$CONDA_PREFIX
 ```
 
 **`CUDA_HOME does not exist, unable to compile CUDA op(s)`** (in audio-flamingo tagger)
-Set `CUDA_HOME=/home/ubooty/miniconda3/envs/audio-flamingo` — nvcc lives at `$CONDA_PREFIX/bin/nvcc`.
+Set `CUDA_HOME=$CONDA_PREFIX` — nvcc lives at `$CONDA_PREFIX/bin/nvcc`.
 
 **`RuntimeError: expected mat1 and mat2 to have the same dtype`** (during training)
 Mixed bfloat16/float32 issue. The model loads in bfloat16 but some heads (`codebook0_head`, `audio_head`) remain float32. `train_lora.py` casts appropriately at each boundary — if you hit this on new code, cast inputs with `.to(head.weight.dtype)` before the linear call.

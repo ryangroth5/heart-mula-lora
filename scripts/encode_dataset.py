@@ -2,7 +2,7 @@
 encode_dataset.py — Convert raw audio + lyrics/tags pairs into pre-tokenized .pt files.
 
 Usage:
-  venv/bin/python examples/encode_dataset.py \
+  venv/bin/python scripts/encode_dataset.py \
     --manifest dataset.json \
     --output_dir ./data/tokens \
     --model_path ./ckpt

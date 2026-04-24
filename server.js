@@ -36,7 +36,7 @@ app.post('/generate', (req, res) => {
   fs.writeFileSync(tagsFile, p.tags || '');
 
   const args = [
-    path.join(BASE_DIR, 'examples', 'run_music_generation.py'),
+    path.join(BASE_DIR, 'scripts', 'run_music_generation.py'),
     `--model_path=${p.model_path || './ckpt'}`,
     `--version=${p.version || '3B'}`,
     `--lyrics=${lyricsFile}`,
@@ -133,7 +133,7 @@ app.post('/encode', (req, res) => {
   const jobId = crypto.randomBytes(8).toString('hex');
 
   const args = [
-    path.join(BASE_DIR, 'examples', 'encode_dataset.py'),
+    path.join(BASE_DIR, 'scripts', 'encode_dataset.py'),
     `--manifest=${p.manifest || './data/dataset.json'}`,
     `--output_dir=${p.output_dir || './data/tokens'}`,
     `--model_path=${p.model_path || './ckpt'}`,
@@ -199,7 +199,7 @@ app.post('/train', (req, res) => {
   const jobId = crypto.randomBytes(8).toString('hex');
 
   const args = [
-    path.join(BASE_DIR, 'examples', 'train_lora.py'),
+    path.join(BASE_DIR, 'scripts', 'train_lora.py'),
     `--model_path=${p.model_path || './ckpt'}`,
     `--version=${p.version || '3B'}`,
     `--dataset_dir=${p.dataset_dir || './data/tokens'}`,
@@ -392,7 +392,7 @@ app.post('/prepare', (req, res) => {
   res.json({ jobId });
 
   const args = [
-    path.join(BASE_DIR, 'examples', 'prepare_lora_dataset.py'),
+    path.join(BASE_DIR, 'scripts', 'prepare_lora_dataset.py'),
     `--input_dir=${p.input_dir || './data/raw'}`,
     `--output_dir=${p.output_dir || './data/processed'}`,
     `--output_json=${p.output_json || './data/dataset.json'}`,
